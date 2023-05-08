@@ -1,30 +1,32 @@
-#!/bin/sh
-#PBS -V
-#PBS -q gpu
-#PBS -N H2O-3
-#PBS -l nodes=1:ppn=1
-source /share/home/bjiangch/group-zyl/.bash_profile
-# conda environment
-conda_env=PyTorch-190
-export OMP_NUM_THREADS=16
-#path to save the code
-path="/home/home/zyl/pytorch/2021_8_1/eann-8/"
+#!/bin/bash
+#SBATCH -J MD-40
+#SBATCH -N 1
+##SBATCH -n 64
+#SBATCH --ntasks-per-node=128
+#SBATCH --cpus-per-task=1
+#SBATCH -p hfacnormal02
+#SBATCH -t 60000
+##SBATCH --mem-per-cpu=1G
+#SBATCH -o out
+#SBATCH -e job.err
+##SBATCH -n 24
+#SBATCH --exclusive
+#SBATCH --no-requeue
 
-#Number of processes per node to launch
-NPROC_PER_NODE=1
+echo Running on hosts
+echo Time is `date`
+echo Directory is $PWD
+echo This job runs on the following nodes:
+echo $SLURM_JOB_NODELIST
+conda_env=pt200
+export OMP_NUM_THREADS=128
 
-#Number of process in all modes
-WORLD_SIZE=`expr $PBS_NUM_NODES \* $NPROC_PER_NODE`
+cd $PWD
 
-MASTER=`/bin/hostname -s`
 
-MPORT=`ss -tan | awk '{print $5}' | cut -d':' -f2 | \
-        grep "[2-9][0-9]\{3,3\}" | sort | uniq | shuf -n 1`
+#The path you place your code
+path="/public/home/bjiangch/zyl/Equi-MPNN/"
+#This command to run your pytorch script
 
-#You will want to replace this
-COMMAND="$path "
-conda activate $conda_env 
-cd $PBS_O_WORKDIR 
-#python3 -m torch.distributed.run --nproc_per_node=$NPROC_PER_NODE --max_restarts=0 --nnodes=$PBS_NUM_NODES --rdzv_id=$PBS_JOBID --rdzv_backend=c10d --rdzv_endpoint=$MASTER:$MPORT $COMMAND > out
-python3 -m torch.distributed.run --nproc_per_node=$NPROC_PER_NODE --max_restarts=0 --nnodes=1 --standalone $COMMAND > out
 
+python $path > out

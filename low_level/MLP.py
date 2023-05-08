@@ -52,15 +52,15 @@ class NNMod(torch.nn.Module):
                   modules.append( * [ResBlock(nl,dropout_p,actfun,table_norm=table_norm)])
           else:
               for ilayer in range(1,nhid):
-                  module.append(actfun(nl[ilayer-1],nl[ilayer]))
+                  modules.append(actfun(nl[ilayer-1],nl[ilayer]))
                   if table_norm: modules.append(LayerNorm(nl[ilayer]))
                   if sumdrop>=0.0001: modules.append(Dropout(p=dropout_p[ilayer-1]))
-                  linear=linear(nl[ilayer],nl[ilayer+1])
-                  if i==nhid-1: 
+                  linear=Linear(nl[ilayer],nl[ilayer+1])
+                  if ilayer==nhid-1: 
                       zeros_(linear.weight)
                   else:
                       xavier_normal_(linear.weight)
-                  module.append(linear)
+                  modules.append(linear)
           modules.append(actfun(nl[nhid-1],nl[nhid]))
           if table_norm: modules.append(LayerNorm(nl[nhid]))
           #if table_norm: modules.append(LayerNorm(nl[nhid]))

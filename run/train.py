@@ -1,148 +1,91 @@
 #! /usr/bin/env python3
-from src.read import *
-from src.dataloader import *
-from src.optimize import *
-from src.density import *
-from src.MODEL import *
-from src.scheduler import *
-from src.restart import *
-from src.checkpoint import *
-from src.save_pes import *
-from src.weight_scheduler import *
+# used for DDP
+
+from torch.func import grad_and_value,vmap
+
+from src.params import *
+import model.MPNN as MPNN
 from torch.optim.swa_utils import AveragedModel,SWALR
-if psi_activate=='Tanh_like':
-    from src.activate import Tanh_like as psi_actfun
-else:
-    from src.activate import Relu_like as psi_actfun
+import dataloader.dataloader as dataloader
+import dataloader.cudaloader as cudaloader  
+import src.print_info as print_info
+import src.loss_func as loss_func
 
-if psi_oc_activate=='Tanh_like':
-    from src.activate import Tanh_like as psi_oc_actfun
-else:
-    from src.activate import Relu_like as psi_oc_actfun
+dataloader=dataloader.Dataloader(maxneigh,batchsize,ratio=ratio,cutoff=cutoff,dier=cutoff,datafloder=datafloder,force_table=force_table,shuffle=True,Dtype=torch_dtype)
 
-from src.activate import RBF as psi_rbf
+# obtain the maxnumber of atoms in this process
+maxnumatom=dataloader.maxnumatom
 
-if pot_activate=='Tanh_like':
-    from src.activate import Tanh_like as pot_actfun
-else:
-    from src.activate import Relu_like as pot_actfun
-
-if pot_oc_activate=='Tanh_like':
-    from src.activate import Tanh_like as pot_oc_actfun
-else:
-    from src.activate import Relu_like as pot_oc_actfun
-
-#choose the right class used for the calculation of property
-import src.Property as Property
-
-from src.cpu_gpu import *
-
-from src.script_PES import *
-import pes.PES as PES
-import psi.PSI as PSI
-from src.print_info import *
-
-#==============================train data loader===================================
-dataloader_train=DataLoader(Nrefpoint_train,com_coor_train,pot_train,numatoms_train,species_train,\
-massrev_train,atom_index_train,shifts_train,batchsize_train,min_data_len=min_data_len_train,shuffle=True)
-#=================================test data loader=================================
-dataloader_test=DataLoader(Nrefpoint_test,com_coor_test,pot_test,numatoms_test,species_test,\
-massrev_test,atom_index_test,shifts_test,batchsize_test,min_data_len=min_data_len_test,shuffle=False)
 # dataloader used for load the mini-batch data
 if torch.cuda.is_available(): 
-    data_train=CudaDataLoader(dataloader_train,device,queue_size=queue_size)
-    data_test=CudaDataLoader(dataloader_test,device,queue_size=queue_size)
-else:
-    data_train=dataloader_train
-    data_test=dataloader_test
+    dataloader=cudaloader.CudaDataLoader(dataloader,device,queue_size=queue_size)
 
-#==============================oc nn module=================================
-# outputneuron=nwave for each orbital have a different coefficients
-psi_ocmod_list=[]
-for ioc_loop in range(psi_oc_loop):
-    ocmod=NNMod(maxnumtype,psi_nwave,atomtype,psi_oc_nblock,list(psi_oc_nl),psi_oc_dropout_p,psi_oc_actfun,table_norm=psi_oc_table_norm)
-    psi_ocmod_list.append(ocmod)
-# outputneuron=nwave for each orbital have a different coefficients
-pot_ocmod_list=[]
-for ioc_loop in range(pot_oc_loop):
-    ocmod=NNMod(maxnumtype,pot_nwave,atomtype,pot_oc_nblock,list(pot_oc_nl),pot_oc_dropout_p,pot_oc_actfun,table_norm=pot_oc_table_norm)
-    pot_ocmod_list.append(ocmod)
-#=======================density======================================================
-psi_density=GetDensity(psi_rs,psi_inta,cutoff,neigh_atoms,psi_nipsin,psi_norbit,psi_ocmod_list)
-pot_density=GetDensity(pot_rs,pot_inta,cutoff,neigh_atoms,pot_nipsin,pot_norbit,pot_ocmod_list)
-#==============================nn module=================================
-psi_nnmod=NNMod(maxnumtype,nlevel,atomtype,psi_nblock,list(psi_nl),psi_dropout_p,psi_actfun,table_norm=psi_table_norm)
-pot_nnmod=NNMod(maxnumtype,pot_output,atomtype,pot_nblock,list(pot_nl),pot_dropout_p,pot_actfun,table_norm=pot_table_norm)
-#=========================create the module=========================================
-print_info=Print_Info(fout,end_lr)
-Prop_class=Property.Property(elevel,factor_kin,cutoff,psi_density,psi_nnmod,pot_density,pot_nnmod).to(device)
+#==============================Equi MPNN=================================
+model=MPNN.MPNN(maxnumatom,max_l=max_l,nwave=nwave,cutoff=cutoff,emb_nblock=emb_nblock,r_nblock=r_nblock,r_nl=r_nl,iter_loop=iter_loop,iter_nblock=iter_nblock,iter_nl=iter_nl,iter_dropout_p=iter_dropout_p,iter_table_norm=iter_table_norm,nblock=nblock,nl=nl,dropout_p=dropout_p,table_norm=table_norm,Dtype=torch_dtype)
+out_dims=(0,)
 
 
-# define the EMA model only on rank 0 and before DDP
-ema_avg = lambda averaged_model_parameter, model_parameter, num_averaged: 0.999 * averaged_model_parameter + 0.001 * model_parameter
-swa_model = AveragedModel(Prop_class,avg_fn=ema_avg)
 
-##  used for syncbn to synchronizate the mean and variabce of bn 
-#Prop_class=torch.nn.SyncBatchNorm.convert_sync_batchnorm(Prop_class).to(device)
-if torch.cuda.is_available():
-    DDP_Prop_class = DDP(Prop_class, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=find_unused)
-else:
-    DDP_Prop_class = DDP(Prop_class, find_unused_parameters=find_unused)
 
-for name, param in DDP_Prop_class.named_parameters():
-    print(name)
+#define optimizer
+optim=torch.optim.AdamW(model.parameters(), lr=start_lr, weight_decay=re_ceff)
 
-jit_pot=script_pes(PES.PES(input_file="input_pot"),module="pot")
+if force_table:
+    model=grad_and_value(model)
+    out_dims=out_dims+(0,)
 
-# define the class tho save the model for evalutaion
-jit_psi=script_pes(PSI.PSI(input_file="input_psi"),module="psi")
+Vmap_model=vmap(model,in_dims=(0,0,0,0,0,0),out_dims=out_dims)
 
-# save the checkpoint
-checkpoint=Checkpoint()
-save_pot=Save_Pes(jit_pot)
-save_psi=Save_Pes(jit_psi)
+# learning rate scheduler 
+lr_scheduler=torch.optim.lr_scheduler.ReduceLROnPlateau(optim,factor=decay_factor,patience=patience_epoch,min_lr=end_lr)
 
-# define the class tho save the model for evalutaion
-# define the restart class
-restart=Restart()
-    
-# load the model from EANN.pth
-if table_init==1: 
-    restart(DDP_Prop_class,"REANN.pth")
-    restart(swa_model,"SWA_REANN.pth")
-else:
-    if rank==0: 
-       checkpoint(swa_model,"SWA_REANN.pth")
-       checkpoint(DDP_Prop_class,"REANN.pth")
+print_err=print_info.Print_Info(end_lr)
 
-table_psi=True
-table_pot=True
-for iNSCF in range(NSCF):
-    if table_pot:
-        Prop_class.get_pot=Prop_class.get_fitpot
+for iepoch in range(Epoch): 
+    # set the model to train
+    lr=optim.param_groups[0]["lr"]
+    weight=(init_weight-final_weight)*(lr-end_lr)/(start_lr-end_lr)+final_weight
+    loss_prop_train=torch.zeros(nprop,device=device)        
+    if torch.cuda.is_available():
+        ntrain=dataloader.loader.ntrain
+        nval=dataloader.loader.nval
     else:
-        Prop_class.get_pot=Prop_class.get_abpot
-    if rank==0: fout.write("{:<8}  {} \n".format("NSCF=",iNSCF))
-    for name, param in DDP_Prop_class.named_parameters():
-        if "psi" in name: param.requires_grad=table_psi
-        if "pot" in name: param.requires_grad=table_pot
-    #define optimizer
-    optim=torch.optim.AdamW(filter(lambda p: p.requires_grad, DDP_Prop_class.module.parameters()), lr=start_lr, weight_decay=re_ceff)
-    
-    # learning rate scheduler 
-    lr_scheduler=torch.optim.lr_scheduler.ReduceLROnPlateau(optim,factor=decay_factor,patience=patience_epoch,min_lr=end_lr)
-    
-    # the scheduler 
-    scheduler=Scheduler(end_lr,decay_factor,checkpoint,lr_scheduler,restart,optim,DDP_Prop_class,swa_model,save_pot,save_psi)
-    
-    # initialize the decay weight
-    weight_scheduler=Weight_Scheduler(init_coeff,final_coeff,start_lr,end_lr)
-    
-    Optimize(Epoch,print_epoch,scheduler,print_info,data_train,data_test,train_nele,test_nele,over_lr,weight_scheduler,DDP_Prop_class,swa_model,optim,device)
-    #Prop_class.switch=1
-    # scf 
-    table_psi = not table_psi
-    table_pot = not table_pot
-    start_lr=over_lr
-    #if start_lr < end_lr: break
-fout.close()
+        ntrain=dataloader.ntrain
+        nval=dataloader.nval
+    for data in dataloader:
+        #optim.zero_grad()
+        optim.zero_grad(set_to_none=True)
+        coor,neighlist,shiftimage,center_factor,neigh_factor,species,abprop=data
+        prediction=Vmap_model(coor,neighlist,shiftimage,center_factor,neigh_factor,species)
+        loss,loss_prop=loss_func.loss_func(prediction,abprop,weight)
+        loss_prop_train+=loss_prop.detach()
+        # clear the gradients of param
+        # print(torch.cuda.memory_allocated)
+        # obtain the gradients
+        loss.backward()
+        optim.step()   
+
+        #  calculate the val error
+    loss_val=torch.zeros(1,device=device)
+    loss_prop_val=torch.zeros(nprop,device=device)
+    for data in dataloader:
+        coor,neighlist,shiftimage,center_factor,neigh_factor,species,abprop=data
+        prediction=Vmap_model(coor,neighlist,shiftimage,center_factor,neigh_factor,species)
+        loss,loss_prop=loss_func.loss_func(prediction,abprop,weight)
+        loss_val+=loss.detach()
+        loss_prop_val+=loss_prop.detach()
+    lr_scheduler.step(loss_val)
+    lr=optim.param_groups[0]["lr"]
+    weight=(init_weight-final_weight)*(lr-end_lr)/(start_lr-end_lr)+final_weight
+
+    loss_prop_train=torch.sqrt(loss_prop_train/ntrain)
+    loss_prop_val=torch.sqrt(loss_prop_val/nval)
+
+    print_err(iepoch,lr,loss_prop_train,loss_prop_val)
+
+    if lr<=end_lr:
+        ferr.write(time.strftime("%Y-%m-%d-%H_%M_%S \n", time.localtime()))
+        ferr.close()
+        print("Normal termination")
+        break
+print("Normal termination")

@@ -1,6 +1,4 @@
 import numpy as np
-import jax
-import math
 
 # read system configuration and energy/force
 def Read_data(datafloder="train/",force_table=None,Dtype=np.float32):
@@ -36,7 +34,7 @@ def Read_data(datafloder="train/",force_table=None,Dtype=np.float32):
             icoor=np.zeros((3,numatom),dtype=Dtype)
             imass=np.zeros(numatom,dtype=Dtype)
             ispecies=np.zeros((numatom,1),dtype=np.int32)
-            if force_table==1: iforce=np.zeros((3,numatom),dtype=Dtype)
+            if force_table==1: iforce=np.zeros((numatom,3),dtype=Dtype)
             for num in range(numatom):
                 string=f1.readline()
                 m=string.split()
@@ -44,7 +42,7 @@ def Read_data(datafloder="train/",force_table=None,Dtype=np.float32):
                 imass[num]=tmp[0]
                 ispecies[num,0]=tmp[1]
                 icoor[:,num]=tmp[2:5]
-                if force_table: iforce[:,num]=-tmp[5:8]
+                if force_table: iforce[num]=tmp[5:8]
             string=f1.readline()
             pot.append(float(string.split()[1]))
             numpoint+=1
