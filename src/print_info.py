@@ -24,5 +24,6 @@ class Print_Info():
         self.ferr.write(" \n")
         if lr<self.end_lr: 
             self.ferr.write(time.strftime("%Y-%m-%d-%H_%M_%S \n", time.localtime()))
+            self.ferr.close()
         self.ferr.flush()
         

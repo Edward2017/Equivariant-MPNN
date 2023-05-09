@@ -1,7 +1,7 @@
 # open a file for output information in iterations
 fout=open('nn.err','w')
 #======general setup===========================================
-table_init=0                   # 1: a pretrained or restart  
+table_init=1                # 1: a pretrained or restart  
 force_table=True
 ratio=0.9                      # ratio for vaildation
 find_unused = False

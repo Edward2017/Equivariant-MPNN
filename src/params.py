@@ -18,6 +18,8 @@ dtype='float32'   #float32/float64
 batchsize=64  # batchsize for each process
 init_weight=[1.0, 5.0]
 final_weight=[1.0, 0.5]
+ema_decay=0.999
+check_epoch=10
 
 #========================parameters for optim=======================
 start_lr=0.01                  # initial learning rate

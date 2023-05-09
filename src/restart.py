@@ -11,4 +11,4 @@ class Restart():
     
     def forward(self,model,checkfile):
         checkpoint = torch.load(checkfile,map_location=torch.device(self.device))
-        model.load_state_dict(checkpoint['reannparam'])
+        model.load_state_dict(checkpoint)
