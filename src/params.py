@@ -38,22 +38,25 @@ datafloder="./"
 #===============================embedded NN structure==========
 emb_nblock=1
 emb_nl=[8,8]
+emb_layernorm=True
 
 #=========radial nn=================================================
 r_nblock = 1                     # the number of resduial NN blocks
 r_nl=[8,8]                   # NN structure
+r_layernorm = True
+
 #===========params for MPNN ===============================================
 iter_loop = 2
 iter_nblock = 1             # neural network architecture   
 iter_nl = [64,64]
 iter_dropout_p=[0.0,0.0,0.0,0.0]
-iter_table_norm=False
+iter_layernorm=False
 
 #======== parameters for final output nn=================================================
 nblock = 1                     # the number of resduial NN blocks
 nl=[64,64]                   # NN structure
 dropout_p=[0.0,0.0]            # dropout probability for each hidden layer
-table_norm = False
+layernorm = False
 
 #======================read input=================================================================
 with open('para/input','r') as f1:

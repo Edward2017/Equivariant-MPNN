@@ -4,7 +4,7 @@ import numpy as np
 # define the strategy of weight decay
 class Scheduler():
     def __init__(self,end_lr,decay_factor,state_loader,optim,model,ema_model):
-        self.best_loss = 1e30
+        self.best_loss = 1e50
         self.end_lr=end_lr
         self.decay_factor=decay_factor
         self.state_loader=state_loader

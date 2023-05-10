@@ -4,8 +4,8 @@
 import numpy as np
 from write_format import *
 cell=np.zeros((3,3),dtype=np.float64)
-f2=open("configuration1",'w')
-with open("configuration",'r') as f1:
+f2=open("configuration",'w')
+with open("/data/home/scv2201/run/zyl/data/H2O/configuration",'r') as f1:
     while True:
         string=f1.readline()
         if not string: break

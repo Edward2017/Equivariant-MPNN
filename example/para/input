@@ -1,48 +1,50 @@
 # open a file for output information in iterations
 fout=open('nn.err','w')
 #======general setup===========================================
-table_init=1                # 1: a pretrained or restart  
+table_init= 0                # 1: a pretrained or restart  
 force_table=True
 ratio=0.9                      # ratio for vaildation
 find_unused = False
-queue_size=10
+queue_size=6
 Epoch=50000                    # total numbers of epochs for fitting 
-dtype='float64'   #float32/float64
+dtype='float32'   #float32/float64
 # batchsize: the most import setup for efficiency
 batchsize=64  # batchsize for each process
-init_weight=[1.0, 5.0]
-final_weight=[1.0, 0.5]
+init_weight=[0.1, 0.5]
+final_weight=[0.1, 0.05]
 
 #========================parameters for optim=======================
-start_lr=0.001                  # initial learning rate
+start_lr=0.002                  # initial learning rate
 end_lr=1e-5                    # final learning rate
 re_ceff=0.0                    # L2 normalization cofficient
 decay_factor=0.5               # Factor by which the learning rate will be reduced. new_lr = lr * factor.      
 patience_epoch=100             # patience epoch  Number of epochs with no improvement after which learning rate will be reduced. 
 #=======================parameters for local environment========================
 maxneigh=100000
-cutoff = 4.0
+cutoff = 6.2
 max_l=2
-nwave=8
+nwave=12
 #==================================data floder=============================
 datafloder="data/0/"
 
 #===============================embedded NN structure==========
 emb_nblock=1
-emb_nl=[8,8]
+emb_nl=[16,16]
+emb_layernorm=True
 
 #=========radial nn=================================================
 r_nblock = 1                     # the number of resduial NN blocks
-r_nl=[8,8]                   # NN structure
+r_nl=[32,32]                   # NN structure
+r_layernorm=True
 #===========params for MPNN ===============================================
 iter_loop = 0
 iter_nblock = 1             # neural network architecture   
 iter_nl = [64,64]
 iter_dropout_p=[0.0,0.0,0.0,0.0]
-iter_table_norm=False
+iter_layernorm=True
 
 #======== parameters for final output nn=================================================
 nblock = 1                     # the number of resduial NN blocks
 nl=[64,64]                   # NN structure
 dropout_p=[0.0,0.0]            # dropout probability for each hidden layer
-table_norm = False
+layernorm = True

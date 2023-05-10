@@ -8,7 +8,7 @@ from collections import OrderedDict
 from low_level.activate import Relu_like as actfun
 
 class MPNN(torch.nn.Module):
-    def __init__(self,maxnumatom,max_l=2,nwave=8,cutoff=4.0,emb_nblock=1,emb_nl=[8,8],r_nblock=1,r_nl=[8,8],iter_loop=3,iter_nblock=1,iter_nl=[64,64],iter_dropout_p=[0.0,0.0],iter_table_norm=False,nblock=1,nl=[64,64],dropout_p=[0.0,0.0],table_norm=False,Dtype=torch.float32):
+    def __init__(self,maxnumatom,max_l=2,nwave=8,cutoff=4.0,emb_nblock=1,emb_nl=[8,8],emb_layernorm=True,r_nblock=1,r_nl=[8,8],r_layernorm=True,iter_loop=3,iter_nblock=1,iter_nl=[64,64],iter_dropout_p=[0.0,0.0],iter_layernorm=True,nblock=1,nl=[64,64],dropout_p=[0.0,0.0],layernorm=True,device=torch.device("cpu"),Dtype=torch.float32):
         super(MPNN,self).__init__()
         self.nwave=nwave
         self.max_l=max_l
@@ -17,7 +17,7 @@ class MPNN(torch.nn.Module):
         self.norbital=self.nwave*(self.max_l+1)
 
         # used for the convenient summation over the same l
-        self.index_l=torch.empty((self.max_l+1)*(self.max_l+1),dtype=torch.long)
+        self.index_l=torch.empty((self.max_l+1)*(self.max_l+1),dtype=torch.long,device=device)
         num=0
         for l in range(0,self.max_l+1):
             self.index_l[num:num+2*l+1]=l
@@ -29,17 +29,17 @@ class MPNN(torch.nn.Module):
         nl.insert(0,self.norbital)
 
         # embedded nn
-        self.embnn=MLP.NNMod(2*nwave+1,emb_nblock,emb_nl,np.array([0]),actfun)
+        self.embnn=MLP.NNMod(2*nwave+1,emb_nblock,emb_nl,np.array([0]),actfun,layernorm=layernorm)
 
 
         # instantiate the nn radial function and disable the dropout 
-        self.radialnn=MLP.NNMod(nwave,r_nblock,r_nl,np.array([0]),actfun)
-        self.sph_cal=sph_cal.SPH_CAL(max_l,Dtype=Dtype)
+        self.radialnn=MLP.NNMod(nwave,r_nblock,r_nl,np.array([0]),actfun,layernorm=layernorm)
+        self.sph_cal=sph_cal.SPH_CAL(max_l,device=device,Dtype=Dtype)
         itermod=OrderedDict()
         for i in range(iter_loop):
             f_iter="memssage_"+str(i)
-            itermod[f_iter]= MLP.NNMod(2*nwave+1,iter_nblock,iter_nl,iter_dropout_p,actfun,table_norm=iter_table_norm)
-        itermod["output"]=MLP.NNMod(1,nblock,nl,dropout_p,actfun,table_norm=table_norm)
+            itermod[f_iter]= MLP.NNMod(2*nwave+1,iter_nblock,iter_nl,iter_dropout_p,actfun,layernorm=iter_layernorm)
+        itermod["output"]=MLP.NNMod(1,nblock,nl,dropout_p,actfun,layernorm=layernorm)
         self.itermod= torch.nn.ModuleDict(itermod)
 
     def forward(self,cart,neighlist,shifts,center_factor,neigh_factor,species):

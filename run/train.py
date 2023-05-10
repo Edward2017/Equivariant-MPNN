@@ -13,7 +13,9 @@ import src.loss_func as loss_func
 import src.restart as restart
 import src.scheduler as state_scheduler
 
-dataloader=dataloader.Dataloader(maxneigh,batchsize,ratio=ratio,cutoff=cutoff,dier=cutoff,datafloder=datafloder,force_table=force_table,shuffle=True,Dtype=torch_dtype)
+dataloader=dataloader.Dataloader(maxneigh,batchsize,ratio=ratio,cutoff=cutoff,dier=cutoff,datafloder=datafloder,force_table=force_table,shuffle=True,device=device,Dtype=torch_dtype)
+
+initpot=dataloader.initpot
 
 # obtain the maxnumber of atoms in this process
 maxnumatom=dataloader.maxnumatom
@@ -23,7 +25,7 @@ if torch.cuda.is_available():
     dataloader=cudaloader.CudaDataLoader(dataloader,device,queue_size=queue_size)
 
 #==============================Equi MPNN=================================
-model=MPNN.MPNN(maxnumatom,max_l=max_l,nwave=nwave,cutoff=cutoff,emb_nblock=emb_nblock,r_nblock=r_nblock,r_nl=r_nl,iter_loop=iter_loop,iter_nblock=iter_nblock,iter_nl=iter_nl,iter_dropout_p=iter_dropout_p,iter_table_norm=iter_table_norm,nblock=nblock,nl=nl,dropout_p=dropout_p,table_norm=table_norm,Dtype=torch_dtype).to(device)
+model=MPNN.MPNN(maxnumatom,max_l=max_l,nwave=nwave,cutoff=cutoff,emb_nblock=emb_nblock,emb_layernorm=emb_layernorm,r_nblock=r_nblock,r_nl=r_nl,r_layernorm=r_layernorm,iter_loop=iter_loop,iter_nblock=iter_nblock,iter_nl=iter_nl,iter_dropout_p=iter_dropout_p,iter_layernorm=iter_layernorm,nblock=nblock,nl=nl,dropout_p=dropout_p,layernorm=layernorm,device=device,Dtype=torch_dtype).to(device)
 
 # Exponential Moving Average
 ema_avg = lambda averaged_model_parameter, model_parameter, num_averaged: ema_decay * averaged_model_parameter + (1-ema_decay) * model_parameter
@@ -87,14 +89,13 @@ for iepoch in range(Epoch):
     loss_prop_train=torch.sqrt(loss_prop_train/ntrain)
     loss_prop_val=torch.sqrt(loss_prop_val/nval)
 
-    print_err(iepoch,lr,loss_prop_train,loss_prop_val)
-
     if np.mod(iepoch,check_epoch)==0: scheduler(loss_val)
 
     lr_scheduler.step(loss_val)
     lr=optim.param_groups[0]["lr"]
     weight=(init_weight-final_weight)*(lr-end_lr)/(start_lr-end_lr)+final_weight
 
+    print_err(iepoch,lr,loss_prop_train,loss_prop_val)
     if lr<=end_lr:
         break
 print("Normal termination")

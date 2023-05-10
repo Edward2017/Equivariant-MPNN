@@ -48,7 +48,7 @@ class SPH_CAL(nn.Module):
         distances=torch.linalg.norm(cart,dim=0)  # to convert to the dimension (n,batchsize)
         d_sq=distances*distances
         sph_shape=(self.max_l*self.max_l,)+cart.shape[1:]
-        sph=cart.new_zeros(sph_shape)
+        sph=cart.new_zeros(sph_shape,device=cart.device)
         sph[0]=self.sqrt2pi_rev*self.sqrt2_rev
         sph[1]=self.prefactor1[1]*self.sqrt2pi_rev*cart[1]
         sph[2]=self.prefactor2[0]*self.sqrt2_rev*self.sqrt2pi_rev*cart[2]
