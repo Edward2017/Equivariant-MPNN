@@ -24,7 +24,6 @@ class Dataloader():
         numatoms=np.array(numatoms)
         pot=np.array(pot)
         self.initpot=np.sum(pot)/np.sum(numatoms)
-        pot=pot-self.initpot*numatoms
         self.numpoint=numpoint
         self.numatoms=torch.tensor(numatoms,dtype=torch.int32)
         self.cell=cell
@@ -95,7 +94,6 @@ class Dataloader():
                 neigh_factor[scutnum:self.maxneigh]=0.0
                 coor[inum,:self.numatoms[i]]=torch.tensor(cart.T)
 
-            print(real_neigh,flush=True)
             shiftimage=torch.tensor((shiftimage[:,:,:real_neigh]).transpose(0,2,1),dtype=self.Dtype)
             neighlist=torch.tensor(neighlist[:,:,:real_neigh],dtype=torch.long)  # for functorh. Only long can be indx in the functorch.
             neigh_factor=neigh_factor[:,:real_neigh]

@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/data/home/scv2201/.conda/envs/pt200/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/data/home/scv2201/.conda/envs/pt200/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/data/home/scv2201/run/zyl/program/Equi-MPNN/__main__.py", line 1, in <module>
+    import run.train
+  File "/data/home/scv2201/run/zyl/program/Equi-MPNN/run/train.py", line 95, in <module>
+    print_err(iepoch,lr,loss_prop_train,loss_prop_val)
+  File "/data/home/scv2201/run/zyl/program/Equi-MPNN/src/print_info.py", line 13, in __call__
+    self.forward(iepoch,lr,loss_train,loss_val) 
+  File "/data/home/scv2201/run/zyl/program/Equi-MPNN/src/print_info.py", line 28, in forward
+    self.ferr.flush()
+ValueError: I/O operation on closed file.

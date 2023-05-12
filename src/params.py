@@ -32,6 +32,7 @@ maxneigh=100000
 cutoff = 4.0
 max_l=2
 nwave=8
+norbital=None
 #==================================data floder=============================
 datafloder="./"
 
@@ -39,13 +40,6 @@ datafloder="./"
 emb_nblock=1
 emb_nl=[8,8]
 emb_layernorm=True
-
-#=========radial nn=================================================
-r_nblock = 1                     # the number of resduial NN blocks
-r_nl=[8,8]                   # NN structure
-r_layernorm = True
-
-#===========params for MPNN ===============================================
 iter_loop = 2
 iter_nblock = 1             # neural network architecture   
 iter_nl = [64,64]
@@ -80,6 +74,8 @@ else:
     np_dtype=np.float32
 
 torch.set_default_dtype(torch_dtype)
+
+if not norbital: norbital=int((max_l+1)*nwave*(nwave+1)/2)
 
 gpu_sel()
 

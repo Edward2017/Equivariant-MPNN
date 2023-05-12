@@ -20,13 +20,13 @@ re_ceff=0.0                    # L2 normalization cofficient
 decay_factor=0.5               # Factor by which the learning rate will be reduced. new_lr = lr * factor.      
 patience_epoch=100             # patience epoch  Number of epochs with no improvement after which learning rate will be reduced. 
 #=======================parameters for local environment========================
-maxneigh=8000
-cutoff = 4.0
+maxneigh=20000
+cutoff = 6.2
 max_l=2
 nwave=8
-norbital=32
+norbital=64
 #==================================data floder=============================
-datafloder="data/0/"
+datafloder="../data/0/"
 
 #===============================embedded NN structure==========
 emb_nblock=1
@@ -35,13 +35,13 @@ emb_layernorm=True
 
 #===========params for MPNN ===============================================
 iter_loop = 0
-iter_nblock = 3             # neural network architecture   
+iter_nblock = 0          # neural network architecture   
 iter_nl = [32,32]
 iter_dropout_p=[0.0,0.0,0.0,0.0]
 iter_layernorm=True
 
 #======== parameters for final output nn=================================================
 nblock = 1                     # the number of resduial NN blocks
-nl=[32,32]                   # NN structure
+nl=[64,64]                   # NN structure
 dropout_p=[0.0,0.0]            # dropout probability for each hidden layer
 layernorm = True

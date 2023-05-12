@@ -30,7 +30,7 @@ class ResBlock(nn.Module):
 
 #==================for get the atomic energy=======================================
 class NNMod(torch.nn.Module):
-   def __init__(self,outputneuron,nblock,nl,dropout_p,actfun,layernorm=True):
+   def __init__(self,outputneuron,nblock,nl,dropout_p,actfun,initbias=0.0,layernorm=True):
       """
       nl: is the neural network structure;
       outputneuron: the number of output neuron of neural network
@@ -41,7 +41,8 @@ class NNMod(torch.nn.Module):
       sumdrop=np.sum(dropout_p)
       with torch.no_grad():
           #A layer of neurons with the same final hidden layer is inserted to facilitate the construction of the resnet.
-          if nblock>1.5: nl.append(nl[1])   
+          if nblock>1.5: 
+              if abs(nl[1]-nl[-1])>0.5: nl.append(nl[1])   
           nhid=len(nl)-1
           modules=[]
           if layernorm: modules.append(LayerNorm(nl[0]))
@@ -65,7 +66,8 @@ class NNMod(torch.nn.Module):
           modules.append(actfun(nl[nhid-1],nl[nhid]))
           if layernorm: modules.append(LayerNorm(nl[nhid]))
           linear=Linear(nl[nhid],self.outputneuron)
-          #zeros_(linear.weight)
+          zeros_(linear.weight)
+          if abs(initbias)>1e-7: linear.bias[:]=initbias
           modules.append(linear)
       self.nets = Sequential(*modules)
 

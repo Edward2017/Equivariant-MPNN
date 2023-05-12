@@ -14,7 +14,7 @@ def Read_data(datafloder="train/",force_table=None,Dtype=np.float32):
        force=[]
     numpoint=0
     fname2=datafloder+'configuration'
-    icell=np.zeros((3,3),dtype=Dtype)
+    icell=np.zeros((3,3),dtype=Dtype,order="F")
     with open(fname2,'r') as f1:
         while True:
             string=f1.readline()
@@ -31,7 +31,7 @@ def Read_data(datafloder="train/",force_table=None,Dtype=np.float32):
             string=f1.readline()
             m=np.array(list(map(float,string.split())))
             icell[:,2]=m
-            icoor=np.zeros((3,numatom),dtype=Dtype)
+            icoor=np.zeros((3,numatom),dtype=Dtype,order="F")
             imass=np.zeros(numatom,dtype=Dtype)
             ispecies=np.zeros((numatom,1),dtype=np.int32)
             if force_table==1: iforce=np.zeros((numatom,3),dtype=Dtype)

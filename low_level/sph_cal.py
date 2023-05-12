@@ -72,7 +72,7 @@ class SPH_CAL(nn.Module):
 import timeit 
 import torch._dynamo
 max_l=8
-cart=torch.randn((3,10000,100),dtype=torch.float32)
+cart=torch.randn((3,10000,1000),dtype=torch.float32)
 sph_cal=SPH_CAL(max_l=max_l)
 
 #torch._dynamo.config.verbose=True
