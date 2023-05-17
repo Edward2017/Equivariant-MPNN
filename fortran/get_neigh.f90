@@ -36,7 +36,7 @@ subroutine get_neigh(cart,coor,atomindex,shifts,maxneigh,numatom,scutnum)
        do iatom=1,numatom
          coor(:,iatom)=coor(:,iatom)-oriminv
        end do
-! obatin image 
+! obtain image 
        do l=1,length
          do iatom=1,numatom
            imageatom(:,iatom,l)=coor(:,iatom)+shiftvalue(:,l)
@@ -87,7 +87,8 @@ subroutine get_neigh(cart,coor,atomindex,shifts,maxneigh,numatom,scutnum)
        end do
        deallocate(index_numrs)
        deallocate(index_rs)
-       atomindex(:,scutnum:maxneigh)=0
+       atomindex(1,scutnum:maxneigh)=0
+       atomindex(2,scutnum:maxneigh)=1
        scutnum=scutnum-1
      return
 end subroutine get_neigh

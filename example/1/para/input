@@ -2,16 +2,16 @@
 fout=open('nn.err','w')
 #======general setup===========================================
 table_init= 0                # 1: a pretrained or restart  
-force_table=True
+force_table=False
 ratio=0.9                      # ratio for vaildation
 find_unused = False
 queue_size=6
 Epoch=50000                    # total numbers of epochs for fitting 
-dtype='float32'   #float32/float64
+dtype='float64'   #float32/float64
 # batchsize: the most import setup for efficiency
 batchsize=64  # batchsize for each process
-init_weight=[0.1, 0.5]
-final_weight=[0.1, 0.05]
+init_weight=[0.5, 0.1]
+final_weight=[0.1, 0.1]
 
 #========================parameters for optim=======================
 start_lr=0.002                  # initial learning rate
@@ -30,18 +30,18 @@ datafloder="../data/0/"
 
 #===============================embedded NN structure==========
 emb_nblock=1
-emb_nl=[8,8]
-emb_layernorm=True
+emb_nl=[]
+emb_layernorm=False
 
 #===========params for MPNN ===============================================
 iter_loop = 0
 iter_nblock = 0          # neural network architecture   
 iter_nl = [32,32]
 iter_dropout_p=[0.0,0.0,0.0,0.0]
-iter_layernorm=True
+iter_layernorm= False
 
 #======== parameters for final output nn=================================================
 nblock = 1                     # the number of resduial NN blocks
-nl=[64,64]                   # NN structure
+nl=[128,128]                   # NN structure
 dropout_p=[0.0,0.0]            # dropout probability for each hidden layer
-layernorm = True
+layernorm = False

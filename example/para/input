@@ -2,16 +2,16 @@
 fout=open('nn.err','w')
 #======general setup===========================================
 table_init= 0                # 1: a pretrained or restart  
-force_table=True
+force_table=False
 ratio=0.9                      # ratio for vaildation
 find_unused = False
-queue_size=6
-Epoch=50000                    # total numbers of epochs for fitting 
-dtype='float32'   #float32/float64
+queue_size=1
+Epoch=10000                    # total numbers of epochs for fitting 
+dtype='float64'   #float32/float64
 # batchsize: the most import setup for efficiency
-batchsize=64  # batchsize for each process
-init_weight=[0.1, 0.5]
-final_weight=[0.1, 0.05]
+batchsize=5  # batchsize for each process
+init_weight=[0.5, 0.0]
+final_weight=[0.1, 0.0]
 
 #========================parameters for optim=======================
 start_lr=0.002                  # initial learning rate
@@ -20,28 +20,28 @@ re_ceff=0.0                    # L2 normalization cofficient
 decay_factor=0.5               # Factor by which the learning rate will be reduced. new_lr = lr * factor.      
 patience_epoch=100             # patience epoch  Number of epochs with no improvement after which learning rate will be reduced. 
 #=======================parameters for local environment========================
-maxneigh=8000
-cutoff = 4.0
+maxneigh=20000
+cutoff = 6.2
 max_l=2
 nwave=8
-norbital=32
+norbital=64
 #==================================data floder=============================
 datafloder="data/0/"
 
 #===============================embedded NN structure==========
 emb_nblock=1
-emb_nl=[8,8]
-emb_layernorm=True
+emb_nl=[]
+emb_layernorm=False
 
 #===========params for MPNN ===============================================
 iter_loop = 0
-iter_nblock = 3             # neural network architecture   
+iter_nblock = 0          # neural network architecture   
 iter_nl = [32,32]
 iter_dropout_p=[0.0,0.0,0.0,0.0]
-iter_layernorm=True
+iter_layernorm= False
 
 #======== parameters for final output nn=================================================
 nblock = 1                     # the number of resduial NN blocks
-nl=[32,32]                   # NN structure
+nl=[128,128]                   # NN structure
 dropout_p=[0.0,0.0]            # dropout probability for each hidden layer
-layernorm = True
+layernorm = False

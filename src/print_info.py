@@ -22,8 +22,8 @@ class Print_Info():
         for error in loss_val:
             self.ferr.write("{:10e} ".format(error))
         self.ferr.write(" \n")
+        self.ferr.flush()
         if lr<=self.end_lr: 
             self.ferr.write(time.strftime("%Y-%m-%d-%H_%M_%S \n", time.localtime()))
             self.ferr.close()
-        self.ferr.flush()
         

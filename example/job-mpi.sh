@@ -18,6 +18,8 @@ module add cuda/11.7
 #ATTENTION! HERE MUSTT BE ONE LINE,OR ERROR!
 source ~/.bashrc
 source activate pt200
+module load gcc/9.3
+module load intel/mkl/2019
 cd $PWD
 
 path="/data/home/scv2201/run/zyl/program/Equi-MPNN/"

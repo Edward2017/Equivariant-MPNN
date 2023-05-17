@@ -30,7 +30,7 @@ class ResBlock(nn.Module):
 
 #==================for get the atomic energy=======================================
 class NNMod(torch.nn.Module):
-   def __init__(self,outputneuron,nblock,nl,dropout_p,actfun,initbias=0.0,layernorm=True):
+   def __init__(self,outputneuron,nblock,nl,dropout_p,actfun,initbias=torch.zeros(0),layernorm=True):
       """
       nl: is the neural network structure;
       outputneuron: the number of output neuron of neural network
@@ -45,7 +45,7 @@ class NNMod(torch.nn.Module):
               if abs(nl[1]-nl[-1])>0.5: nl.append(nl[1])   
           nhid=len(nl)-1
           modules=[]
-          if layernorm: modules.append(LayerNorm(nl[0]))
+          #if layernorm: modules.append(LayerNorm(nl[0]))
           linear=Linear(nl[0],nl[1])
           xavier_normal_(linear.weight)
           modules.append(linear)
@@ -58,20 +58,17 @@ class NNMod(torch.nn.Module):
                   if layernorm: modules.append(LayerNorm(nl[ilayer]))
                   if sumdrop>=0.0001: modules.append(Dropout(p=dropout_p[ilayer-1]))
                   linear=Linear(nl[ilayer],nl[ilayer+1])
-                  if ilayer==nhid-1: 
-                      zeros_(linear.weight)
-                  else:
-                      xavier_normal_(linear.weight)
+                  xavier_normal_(linear.weight)
                   modules.append(linear)
           modules.append(actfun(nl[nhid-1],nl[nhid]))
           if layernorm: modules.append(LayerNorm(nl[nhid]))
           linear=Linear(nl[nhid],self.outputneuron)
           zeros_(linear.weight)
-          if abs(initbias)>1e-7: linear.bias[:]=initbias
+          linear.bias[:]=initbias[:]
           modules.append(linear)
       self.nets = Sequential(*modules)
 
 #   @pysnooper.snoop('out',depth=2)   for debug
    def forward(self,density):    
       # elements: dtype: LongTensor store the index of elements of each center atom
-      return self.nets(density)
+       return self.nets(density)

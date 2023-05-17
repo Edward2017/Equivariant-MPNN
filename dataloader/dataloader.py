@@ -91,9 +91,8 @@ class Dataloader():
                 cart,neighlist[inum],shiftimage[inum],scutnum=getneigh.get_neigh(icart,self.maxneigh)
                 getneigh.deallocate_all()
                 if real_neigh<scutnum: real_neigh=scutnum
-                neigh_factor[scutnum:self.maxneigh]=0.0
+                neigh_factor[inum,scutnum:self.maxneigh]=0.0
                 coor[inum,:self.numatoms[i]]=torch.tensor(cart.T)
-
             shiftimage=torch.tensor((shiftimage[:,:,:real_neigh]).transpose(0,2,1),dtype=self.Dtype)
             neighlist=torch.tensor(neighlist[:,:,:real_neigh],dtype=torch.long)  # for functorh. Only long can be indx in the functorch.
             neigh_factor=neigh_factor[:,:real_neigh]

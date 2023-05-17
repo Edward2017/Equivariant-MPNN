@@ -13,7 +13,9 @@ import src.loss_func as loss_func
 import src.restart as restart
 import src.scheduler as state_scheduler
 
-dataloader=dataloader.Dataloader(maxneigh,batchsize,ratio=ratio,cutoff=cutoff,dier=cutoff,datafloder=datafloder,force_table=force_table,shuffle=True,device=device,Dtype=torch_dtype)
+dataloader=dataloader.Dataloader(maxneigh,batchsize,ratio=ratio,cutoff=cutoff,dier=cutoff,datafloder=datafloder,force_table=force_table,shuffle=False,device=device,Dtype=torch_dtype)
+
+
 
 initpot=dataloader.initpot
 # obtain the maxnumber of atoms in this process
@@ -61,18 +63,23 @@ for iepoch in range(Epoch):
         nval=dataloader.loader.nval
     else:
         ntrain=dataloader.ntrain
-        nval=dataloader.nval
+        nval=dataloader.nvala
     for data in dataloader:
         #optim.zero_grad()
         coor,neighlist,shiftimage,center_factor,neigh_factor,species,abprop=data
         prediction=Vmap_model(coor,neighlist,shiftimage,center_factor,neigh_factor,species)
+        print("hello",prediction)
         loss,loss_prop=loss_func.loss_func(prediction,abprop,weight)
         loss_prop_train+=loss_prop.detach()
         # print(torch.cuda.memory_allocated)
         # obtain the gradients
         optim.zero_grad(set_to_none=True)
         loss.backward()
+        #for name, params in model.named_parameters():
+        #    print(name,params,params.grad)
         optim.step()   
+        prediction=Vmap_model(coor,neighlist,shiftimage,center_factor,neigh_factor,species)
+        print("hello1",prediction)
     # update the EMA parameters
     ema_model.update_parameters(model)
 
@@ -82,6 +89,9 @@ for iepoch in range(Epoch):
     for data in dataloader:
         coor,neighlist,shiftimage,center_factor,neigh_factor,species,abprop=data
         prediction=Vmap_model(coor,neighlist,shiftimage,center_factor,neigh_factor,species)
+        #print(prediction)
+        #for ipred, ilabel in zip(prediction,abprop):
+        #    print(ipred,ilabel)
         loss,loss_prop=loss_func.loss_func(prediction,abprop,weight)
         loss_val+=loss.detach()
         loss_prop_val+=loss_prop.detach()
@@ -96,3 +106,34 @@ for iepoch in range(Epoch):
     if lr<=end_lr:
         break
 print("Normal termination")
+
+'''
+# test the rotational invariant
+coor=torch.rand(4,3).to(device).to(torch_dtype)
+neighlist=torch.tensor([[0,0,0,1,1,1,2,2,2,3,3,3],[1,2,3,0,2,3,0,1,3,0,1,2]]).to(torch.long).to(device)
+shiftimage=torch.zeros(12,3).to(device).to(torch_dtype)
+center_factor=torch.ones(4).to(device).to(torch_dtype)
+neigh_factor=torch.ones(12).to(device).to(torch_dtype)
+species=torch.tensor([3,2,1,3]).to(device).to(torch_dtype).reshape(-1,1)
+energy=model(coor,neighlist,shiftimage,center_factor,neigh_factor,species)
+ceta=torch.tensor([np.pi/8.0])
+rotate=torch.zeros(3,3).to(device).to(torch_dtype)
+rotate[0,0]=torch.cos(ceta)
+rotate[0,1]=-torch.sin(ceta)
+rotate[1,0]=torch.sin(ceta)
+rotate[1,1]=torch.cos(ceta)
+rotate[2,2]=1.0
+coor=torch.einsum('ij,jk ->ik',coor,rotate)
+energy1=model(coor,neighlist,shiftimage,center_factor,neigh_factor,species)
+m=coor[0,:].clone()
+coor[0,:]=coor[3,:]
+coor[3,:]=m
+energy2=model(coor,neighlist,shiftimage,center_factor,neigh_factor,species)
+m=coor[1,:].clone()
+coor[1,:]=coor[3,:]
+coor[3,:]=m
+energy3=model(coor,neighlist,shiftimage,center_factor,neigh_factor,species)
+print(energy,energy1,energy2,energy3)
+print(energy4)
+'''
+
