@@ -63,12 +63,11 @@ class NNMod(torch.nn.Module):
           modules.append(actfun(nl[nhid-1],nl[nhid]))
           if layernorm: modules.append(LayerNorm(nl[nhid]))
           linear=Linear(nl[nhid],self.outputneuron)
-          zeros_(linear.weight)
+          #zeros_(linear.weight)
           linear.bias[:]=initbias[:]
           modules.append(linear)
       self.nets = Sequential(*modules)
 
-#   @pysnooper.snoop('out',depth=2)   for debug
    def forward(self,density):    
       # elements: dtype: LongTensor store the index of elements of each center atom
        return self.nets(density)

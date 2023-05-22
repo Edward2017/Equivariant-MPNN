@@ -9,11 +9,13 @@ from torch.optim.swa_utils import AveragedModel,SWALR
 import dataloader.dataloader as dataloader
 import dataloader.cudaloader as cudaloader  
 import src.print_info as print_info
-import src.loss_func as loss_func
 import src.restart as restart
 import src.scheduler as state_scheduler
 
-dataloader=dataloader.Dataloader(maxneigh,batchsize,ratio=ratio,cutoff=cutoff,dier=cutoff,datafloder=datafloder,force_table=force_table,shuffle=False,device=device,Dtype=torch_dtype)
+from functorch import make_functional
+import torchopt
+
+dataloader=dataloader.Dataloader(maxneigh,batchsize,ratio=ratio,cutoff=cutoff,dier=cutoff,datafloder=datafloder,force_table=force_table,shuffle=True,device=device,Dtype=torch_dtype)
 
 
 
@@ -32,30 +34,38 @@ model=MPNN.MPNN(maxneigh/maxnumatom,initpot,max_l=max_l,nwave=nwave,cutoff=cutof
 ema_avg = lambda averaged_model_parameter, model_parameter, num_averaged: ema_decay * averaged_model_parameter + (1-ema_decay) * model_parameter
 ema_model = AveragedModel(model,avg_fn=ema_avg)
 
-#define optimizer
-optim=torch.optim.AdamW(model.parameters(), lr=start_lr, weight_decay=re_ceff)
-
 state_loader=restart.Restart()
 if table_init==1:
     state_loader(model,"Equi-MPNN.pt")
-    state_loader(optim,"optim.pt")
     state_loader(ema_model,"ema.pt")
+   
+scheduler=state_scheduler.Scheduler(end_lr,decay_factor,state_loader,model,ema_model)
 
-# learning rate scheduler 
-lr_scheduler=torch.optim.lr_scheduler.ReduceLROnPlateau(optim,factor=decay_factor,patience=patience_epoch,min_lr=end_lr)
+fmodel,params=make_functional(model,disable_autograd_tracking=True)
+#build and initialize the optim
+optim=torchopt.adam(start_lr)
+opt_state=optim.init(params)
 
-scheduler=state_scheduler.Scheduler(end_lr,decay_factor,state_loader,optim,model,ema_model)
 
 if force_table:
-    Vmap_model=vmap(grad_and_value(model),in_dims=(0,0,0,0,0,0),out_dims=(0,0))
+    Vmap_model=vmap(grad_and_value(fmodel,argnums=1),in_dims=(None,0,0,0,0,0,0),out_dims=(0,0))
 else:
-    Vmap_model=vmap(model,in_dims=(0,0,0,0,0,0),out_dims=0)
+    Vmap_model=vmap(fmodel,in_dims=(None,0,0,0,0,0,0),out_dims=0)
+
+#loss function
+def loss_func(params,coor,neighlist,shiftimage,center_factor,neigh_factor,species,label,weight):
+    prediction=Vmap_model(params,coor,neighlist,shiftimage,center_factor,neigh_factor,species)
+    lossprop=torch.cat([torch.sum(torch.square(ipred-ilabel)).reshape(-1) for ipred, ilabel in zip(prediction,label)])
+    loss=torch.inner(lossprop,weight)
+    return loss,lossprop
+
+loss_grad_model=grad_and_value(loss_func,has_aux=True)
 
 print_err=print_info.Print_Info(end_lr)
 
-for iepoch in range(Epoch): 
-    # set the model to train
-    lr=optim.param_groups[0]["lr"]
+lr=start_lr
+iepoch=0
+for iepoch in range(Epoch):
     weight=(init_weight-final_weight)*(lr-end_lr)/(start_lr-end_lr)+final_weight
     loss_prop_train=torch.zeros(nprop,device=device)        
     if torch.cuda.is_available():
@@ -63,44 +73,27 @@ for iepoch in range(Epoch):
         nval=dataloader.loader.nval
     else:
         ntrain=dataloader.ntrain
-        nval=dataloader.nvala
+        nval=dataloader.nval
     for data in dataloader:
-        #optim.zero_grad()
-        coor,neighlist,shiftimage,center_factor,neigh_factor,species,abprop=data
-        prediction=Vmap_model(coor,neighlist,shiftimage,center_factor,neigh_factor,species)
-        print("hello",prediction)
-        loss,loss_prop=loss_func.loss_func(prediction,abprop,weight)
+        grads,(loss,loss_prop)=loss_grad_model(params,*data,weight)
+        updates,opt_state=optim.update(grads,opt_state)
+        params = torchopt.apply_updates(params, updates)
         loss_prop_train+=loss_prop.detach()
-        # print(torch.cuda.memory_allocated)
-        # obtain the gradients
-        optim.zero_grad(set_to_none=True)
-        loss.backward()
-        #for name, params in model.named_parameters():
-        #    print(name,params,params.grad)
-        optim.step()   
-        prediction=Vmap_model(coor,neighlist,shiftimage,center_factor,neigh_factor,species)
-        print("hello1",prediction)
     # update the EMA parameters
-    ema_model.update_parameters(model)
+    #ema_model.update_parameters(model)
 
-        #  calculate the val error
+    #  calculate the val error
     loss_val=torch.zeros(1,device=device)
     loss_prop_val=torch.zeros(nprop,device=device)
     for data in dataloader:
-        coor,neighlist,shiftimage,center_factor,neigh_factor,species,abprop=data
-        prediction=Vmap_model(coor,neighlist,shiftimage,center_factor,neigh_factor,species)
-        #print(prediction)
-        #for ipred, ilabel in zip(prediction,abprop):
-        #    print(ipred,ilabel)
-        loss,loss_prop=loss_func.loss_func(prediction,abprop,weight)
+        #coor,neighlist,shiftimage,center_factor,neigh_factor,species,abprop=data
+        loss,loss_prop=loss_func(params,*data,weight)
         loss_val+=loss.detach()
         loss_prop_val+=loss_prop.detach()
     loss_prop_train=torch.sqrt(loss_prop_train/ntrain)
     loss_prop_val=torch.sqrt(loss_prop_val/nval)
 
     if np.mod(iepoch,check_epoch)==0: scheduler(loss_val)
-
-    lr_scheduler.step(loss_val)
 
     print_err(iepoch,lr,loss_prop_train,loss_prop_val)
     if lr<=end_lr:
